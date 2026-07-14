@@ -1,0 +1,25 @@
+# ArgoCD Application — tells ArgoCD to deploy the plain manifests in workloads/hello.
+apiVersion: argoproj.io/v1alpha1   # ArgoCD's rulebook
+kind: Application                  # an ArgoCD Application
+metadata:
+  name: hello
+  namespace: argocd                # Applications live in the argocd namespace
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"   # ordering hint (first wave)
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ankurgautam90/argocd-poc.git
+    targetRevision: main           # branch
+    path: workloads/hello          # the folder to deploy (plain YAML, no Helm)
+    directory:
+      recurse: false               # apply the .yaml files directly in that folder
+  destination:
+    server: https://kubernetes.default.svc   # this cluster
+    namespace: hello               # deploy the app into a "hello" namespace
+  syncPolicy:
+    automated:
+      selfHeal: true               # snap back to Git if it drifts
+      prune: true                  # delete from cluster if removed from Git
+    syncOptions:
+      - CreateNamespace=true       # make the "hello" namespace if missing
