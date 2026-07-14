@@ -7,7 +7,7 @@ metadata:
   labels:
     app: hello               # a tag on this Deployment
 spec:
-  replicas: 1                # run 1 copy (bump later to watch ArgoCD reconcile)
+  replicas: 2                # run 1 copy (bump later to watch ArgoCD reconcile)
   selector:
     matchLabels:
       app: hello             # this Deployment owns pods tagged app=hello
