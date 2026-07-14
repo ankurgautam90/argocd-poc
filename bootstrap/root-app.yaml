@@ -1,0 +1,22 @@
+# App-of-apps ROOT. Apply this ONCE (Claude will do it after you push).
+# It watches apps/ — every Application file there gets managed by ArgoCD.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ankurgautam90/argocd-poc.git
+    targetRevision: main
+    path: apps
+    directory:
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
