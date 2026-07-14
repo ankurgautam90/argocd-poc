@@ -1,0 +1,2 @@
+# Keep this folder tracked in git so ArgoCD's 'path: apps' always resolves.
+# An empty folder would vanish from git and freeze pruning (ComparisonError).
