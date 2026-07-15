@@ -6,7 +6,7 @@ metadata:
   name: cass-operator
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "0"        # wave 0 = operators come first
+    argocd.argoproj.io/sync-wave: "1"        # wave 1 = AFTER cert-manager (its webhook needs it)
 spec:
   project: default
   source:

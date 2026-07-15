@@ -1,0 +1,25 @@
+# CloudNativePG (CNPG) — the operator that will run PostgreSQL for future apps.
+# Installs a controller pod (in cnpg-system) + the Cluster CRD. No LoadBalancer.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudnative-pg
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://cloudnative-pg.io/charts   # resolved URL (github.io redirects here)
+    chart: cloudnative-pg
+    targetRevision: "0.29.0"                      # operator 1.30.0
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

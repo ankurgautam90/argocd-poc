@@ -1,0 +1,29 @@
+# cert-manager — issues TLS certificates inside the cluster.
+# Foundational: cass-operator's webhook needs it, and we'll use it later for ingress TLS.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"        # deploy before cass-operator (wave 1)
+spec:
+  project: default
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: v1.21.0
+    helm:
+      values: |
+        crds:
+          enabled: true                        # install cert-manager's CRDs too
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
