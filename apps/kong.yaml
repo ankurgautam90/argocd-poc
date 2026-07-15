@@ -20,9 +20,10 @@ spec:
           enabled: true                          # Kong Ingress Controller (watches Ingress + Gateway API)
         proxy:
           type: LoadBalancer
+          loadBalancerIP: "103.240.25.21"        # pin the FIP — the correct OpenStack way (NOT an annotation)
           externalTrafficPolicy: Local           # preserve client source IP (#18)
           annotations:
-            loadbalancer.openstack.org/floating-ip: "103.240.25.21"   # pin the ingress LB IP
+            loadbalancer.openstack.org/keep-floatingip: "true"   # retain the FIP if the Service is deleted
         podDisruptionBudget:
           enabled: true
           minAvailable: 1                         # keep >=1 during node drains (#18, #25)
