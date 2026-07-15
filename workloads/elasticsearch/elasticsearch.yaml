@@ -1,0 +1,35 @@
+# ECK reads this and builds an Elasticsearch cluster. PoC: single node, 50 Gi block PVC (#8).
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: elasticsearch
+spec:
+  version: 8.15.3
+  nodeSets:
+    - name: default
+      count: 1                            # single node for the PoC
+      config:
+        node.store.allow_mmap: false      # avoid needing vm.max_map_count tuning on nodes
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: 2Gi
+                limits:
+                  memory: 3Gi
+              env:
+                - name: ES_JAVA_OPTS
+                  value: "-Xms1g -Xmx1g"   # 1 GB heap
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: default
+            resources:
+              requests:
+                storage: 50Gi             # #8: 50 Gi block PVC

@@ -1,0 +1,39 @@
+# Rancher (#15) — cluster-management UI + RBAC. Installs Fleet automatically (#14).
+# Requires cert-manager (have it) + an ingress controller (Kong, wave 1) + a hostname.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"          # after cert-manager (wave 0); alongside Kong
+spec:
+  project: default
+  source:
+    repoURL: https://releases.rancher.com/server-charts/stable
+    chart: rancher
+    targetRevision: "2.14.3"
+    helm:
+      values: |
+        # >>> CHANGE hostname to a real DNS name that resolves to Kong's LB IP <<<
+        hostname: rancher.xks.local
+        replicas: 1                              # 1 to fit the 8 GB workers (default is 3)
+        # >>> CHANGE this before first login (min 12 chars) <<<
+        bootstrapPassword: "changeme-bootstrap-pw"
+        ingress:
+          enabled: true
+          ingressClassName: kong                 # serve Rancher through Kong
+          tls:
+            source: rancher                      # self-signed cert via cert-manager
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cattle-system                     # Rancher's standard namespace; Fleet lands in cattle-fleet-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+# NOTE: Rancher officially targets ingress-nginx; on Kong the Ingress may need annotation
+# tuning. Also needs the `hostname` DNS to point at Kong's LB IP. Deploy after Kong is up.

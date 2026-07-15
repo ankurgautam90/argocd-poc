@@ -1,0 +1,29 @@
+# Argo Rollouts (#16) — blue-green & canary controller. Pairs with ArgoCD.
+# Installs the Rollout CRD + controller + dashboard. No LoadBalancer.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"          # foundational controller
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: "2.41.0"                     # controller v1.9.0
+    helm:
+      values: |
+        dashboard:
+          enabled: true                          # Rollouts UI
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
