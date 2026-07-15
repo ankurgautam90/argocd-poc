@@ -1,0 +1,25 @@
+# Elastic Cloud on Kubernetes (ECK) — the operator that will run Elasticsearch for us.
+# Installs a controller pod (in elastic-system) + Elasticsearch/Kibana CRDs. No LoadBalancer.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: eck-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"        # wave 0 = operators come first
+spec:
+  project: default
+  source:
+    repoURL: https://helm.elastic.co         # Elastic's Helm repo
+    chart: eck-operator                       # the chart name (fetched directly, no wrapper)
+    targetRevision: "3.4.1"                    # pinned chart version
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elastic-system                  # operator lives here
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true                   # make elastic-system if missing
+      - ServerSideApply=true                   # needed: the CRDs are large

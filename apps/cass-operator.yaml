@@ -1,0 +1,25 @@
+# cass-operator — the operator that will run Cassandra for us.
+# Installs a controller pod (in cass-operator ns) + the CassandraDatacenter CRD. No LoadBalancer.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cass-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"        # wave 0 = operators come first
+spec:
+  project: default
+  source:
+    repoURL: https://helm.k8ssandra.io/stable   # k8ssandra's Helm repo
+    chart: cass-operator                         # the chart name
+    targetRevision: "0.65.0"                      # pinned chart version (Cassandra operator 1.31.0)
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cass-operator                      # operator lives here
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true                      # make cass-operator ns if missing
+      - ServerSideApply=true                      # needed: the CassandraDatacenter CRD is large
