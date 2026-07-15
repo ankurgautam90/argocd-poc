@@ -15,8 +15,8 @@ spec:
     targetRevision: "2.14.3"
     helm:
       values: |
-        # >>> CHANGE hostname to a real DNS name that resolves to Kong's LB IP <<<
-        hostname: rancher.xks.local
+        # sslip.io auto-resolves this to Kong's LB IP (103.240.25.21) — swap for a real DNS name if you have one
+        hostname: rancher.103.240.25.21.sslip.io
         replicas: 1                              # 1 to fit the 8 GB workers (default is 3)
         # >>> CHANGE this before first login (min 12 chars) <<<
         bootstrapPassword: "changeme-bootstrap-pw"
