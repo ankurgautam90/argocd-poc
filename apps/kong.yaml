@@ -19,8 +19,10 @@ spec:
         ingressController:
           enabled: true                          # Kong Ingress Controller (watches Ingress + Gateway API)
         proxy:
-          type: LoadBalancer                     # Octavia gives it a public IP (NOT .20 on this cluster)
+          type: LoadBalancer
           externalTrafficPolicy: Local           # preserve client source IP (#18)
+          annotations:
+            loadbalancer.openstack.org/floating-ip: "103.240.25.21"   # pin the ingress LB IP
         podDisruptionBudget:
           enabled: true
           minAvailable: 1                         # keep >=1 during node drains (#18, #25)
