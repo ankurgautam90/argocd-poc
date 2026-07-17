@@ -6,6 +6,13 @@ metadata:
   namespace: elasticsearch
 spec:
   version: 8.15.3
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true                    # PoC: plain HTTP inside the cluster so Temporal
+                                          # (visibility store) can reach ES with basic-auth,
+                                          # no self-signed CA to mount. Internal-only; for prod,
+                                          # keep TLS and mount the eck CA into Temporal instead.
   nodeSets:
     - name: default
       count: 1                            # single node for the PoC

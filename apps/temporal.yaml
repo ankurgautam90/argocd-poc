@@ -1,0 +1,82 @@
+# Temporal (durable workflow engine). Uses OUR existing datastores:
+#   default store (workflow history/state) -> Cassandra    (cass-operator ns)
+#   visibility store (search/UI)           -> Elasticsearch (elasticsearch ns)
+# Chart 1.6.0 removed the bundled subcharts, so this is external-datastore-first.
+# Passwords are NOT in git — they live in two Secrets we create in the temporal ns:
+#   temporal-cassandra-secret (key: password)  <- copied from cassandra-superuser
+#   temporal-es-secret        (key: password)  <- copied from elasticsearch-es-elastic-user
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: temporal
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"          # after datastores (wave 2)
+spec:
+  project: default
+  source:
+    repoURL: https://go.temporal.io/helm-charts   # official packaged Helm repo
+    chart: temporal
+    targetRevision: "1.6.0"                        # Temporal server 1.31.2
+    helm:
+      values: |
+        # 1.30+ images: turn off the legacy dockerize shim
+        shims:
+          dockerize: false
+
+        # Server: 1 replica per role for the PoC (frontend/history/matching/worker)
+        server:
+          replicaCount: 1
+          config:
+            logLevel: "info"
+            persistence:
+              defaultStore: default
+              visibilityStore: visibility
+              numHistoryShards: 512
+              datastores:
+                # workflow state/history -> our Cassandra ring
+                default:
+                  cassandra:
+                    hosts: "cassandra-dc1-service.cass-operator.svc.cluster.local"
+                    port: 9042
+                    keyspace: temporal
+                    user: "cassandra-superuser"
+                    existingSecret: temporal-cassandra-secret
+                    secretKey: password
+                    replicationFactor: 1          # single-node Cassandra -> RF must be 1
+                    consistency:
+                      default:
+                        consistency: "local_quorum"   # RF1 -> quorum = 1 node
+                        serialConsistency: "local_serial"
+                # search/visibility -> our Elasticsearch (plain HTTP; see ES TLS note)
+                visibility:
+                  elasticsearch:
+                    version: v8                   # ES 8.15.3
+                    url:
+                      scheme: http
+                      host: "elasticsearch-es-http.elasticsearch.svc.cluster.local:9200"
+                    username: "elastic"
+                    existingSecret: temporal-es-secret
+                    secretKey: password
+                    logLevel: error
+                    indices:
+                      visibility: temporal_visibility_v1
+
+        # Web UI (temporalio/ui) — exposed via Kong Ingress: temporal.xks.local -> 103.240.25.21
+        web:
+          enabled: true
+          ingress:
+            enabled: true
+            className: kong
+            hosts:
+              - "temporal.xks.local"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: temporal
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
