@@ -62,14 +62,15 @@ spec:
                     indices:
                       visibility: temporal_visibility_v1
 
-        # Web UI (temporalio/ui) — exposed via Kong Ingress: temporal.xks.local -> 103.240.25.21
+        # Web UI (temporalio/ui) — exposed via Kong Ingress on the shared sslip.io
+        # wildcard (same pattern as rancher/rollouts): auto-resolves to Kong FIP 103.240.25.21
         web:
           enabled: true
           ingress:
             enabled: true
             className: kong
             hosts:
-              - "temporal.xks.local"
+              - "temporal.103.240.25.21.sslip.io"
   destination:
     server: https://kubernetes.default.svc
     namespace: temporal
