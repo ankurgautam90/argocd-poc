@@ -1,0 +1,33 @@
+# Progressive Delivery demo — Argo Rollouts canary driven through the Kong Gateway (Gateway API).
+# Rollout `demo-gw` + stable/canary Services + HTTPRoute `demo-route` + the Kong Gateway/GatewayClass.
+# Traffic split (20/50/100) is written into the HTTPRoute by Argo Rollouts and enforced by Kong.
+# Host: canary.103.240.25.21.sslip.io   Dashboard: rollouts.103.240.25.21.sslip.io
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rollout-demo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"        # after kong (1), gateway-api (0), argo-rollouts (0)
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ankurgautam90/argocd-poc.git
+    targetRevision: main
+    path: workloads/rollout-demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default                        # manifests carry their own ns (default + kong)
+  syncPolicy:
+    automated: { selfHeal: true, prune: true }
+    syncOptions:
+      - ServerSideApply=true
+    # Argo Rollouts owns the HTTPRoute weights + the Services' pod-hash selectors at runtime;
+    # ignore those so ArgoCD doesn't fight the rollout controller.
+  ignoreDifferences:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      jsonPointers: [ /spec/rules/0/backendRefs/0/weight, /spec/rules/0/backendRefs/1/weight ]
+    - group: ""
+      kind: Service
+      jsonPointers: [ /spec/selector/rollouts-pod-template-hash ]

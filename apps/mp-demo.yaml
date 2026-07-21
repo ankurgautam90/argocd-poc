@@ -1,0 +1,25 @@
+# Multi-protocol LB demo — one Kong LB IP (103.240.25.21) serves HTTP + HTTPS + gRPC + WSS.
+#   echo (whoami)  -> HTTP/HTTPS   echo.103.240.25.21.sslip.io
+#   ws-test        -> WSS          ws.103.240.25.21.sslip.io
+#   grpcbin        -> gRPC (grpcs) grpc.103.240.25.21.sslip.io
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mp-demo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ankurgautam90/argocd-poc.git
+    targetRevision: main
+    path: workloads/mp-demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mp-demo
+  syncPolicy:
+    automated: { selfHeal: true, prune: true }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

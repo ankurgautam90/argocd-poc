@@ -1,0 +1,27 @@
+# Cross-cluster communication demo (Submariner) — CLUSTER-B side.
+# nginx + grpcbin (exported via ServiceExport) + demo-client. Reachable from cluster-A at
+#   <svc>.cross-cluster-demo.svc.clusterset.local  over the Submariner IPsec tunnel.
+# NOTE: Submariner itself (operator/broker/gateway) is installed out-of-band via subctl — see README.
+#       The CLUSTER-A side lives in workloads/cross-cluster-demo/cluster-a and is applied to cluster-A
+#       (separate ArgoCD or `kubectl apply`), not by this Application.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cross-cluster-demo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ankurgautam90/argocd-poc.git
+    targetRevision: main
+    path: workloads/cross-cluster-demo/cluster-b
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cross-cluster-demo
+  syncPolicy:
+    automated: { selfHeal: true, prune: true }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

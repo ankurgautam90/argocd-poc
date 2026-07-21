@@ -30,9 +30,49 @@ workloads/<name>/           # plain manifests / CRs the Applications point at
 | 0 | cert-manager, ECK operator, cass-operator, Gateway API CRDs, Argo Rollouts |
 | 1 | Kong (ingress/gateway), Rancher (+ Fleet) |
 | 2 | Cassandra (`CassandraDatacenter`), Elasticsearch (`Elasticsearch`) |
+| 3 | Temporal (server + web, wired to the Cassandra + Elasticsearch above) |
+| 4 | Demos: `rollout-demo`, `mp-demo`, `cross-cluster-demo` |
 
-Datastores are single-node with 50 Gi PVCs (adjust for production). PostgreSQL and Temporal
-are intentionally **not** included (DB is external; Temporal added separately when needed).
+Datastores are single-node with 50 Gi PVCs (adjust for production).
+
+## Demos & workloads (wave 4)
+
+These are the capability demos, each a self-contained ArgoCD Application over `workloads/<name>/`.
+
+### `rollout-demo` — progressive delivery (canary)
+`workloads/rollout-demo/` — an Argo Rollouts **canary** driven through the **Kong Gateway (Gateway API)**.
+- `demo-gw` Rollout (blue/green image), `demo-stable` + `demo-canary` Services, `demo-route` HTTPRoute, the Kong `Gateway`/`GatewayClass`.
+- Argo Rollouts writes the traffic split (20→50→100) into the HTTPRoute; **Kong enforces the exact %**.
+- The App `ignoreDifferences` the HTTPRoute weights + the Services' `rollouts-pod-template-hash` selector (those are runtime-owned by the rollout controller — don't let ArgoCD fight it).
+- Host `canary.<KONG_IP>.sslip.io` · dashboard `rollouts.<KONG_IP>.sslip.io`.
+
+### `mp-demo` — one LB IP, four protocols
+`workloads/mp-demo/` — proves **HTTP + HTTPS + gRPC + WSS on the single Kong LB IP** (ports 80 + 443 only).
+- `echo` (whoami) → HTTP/HTTPS · `ws-test` → WSS · `grpcbin` → gRPC-over-TLS.
+- Hosts: `echo.` / `ws.` / `grpc.<KONG_IP>.sslip.io`. Kong demuxes by SNI + Host + protocol.
+
+### `cross-cluster-demo` — Submariner cross-cluster networking
+`workloads/cross-cluster-demo/` — services on one cluster reachable from the other by DNS, over an IPsec tunnel.
+- **`cluster-b/`** (managed by this ArgoCD): `nginx` + `grpcbin` (exported via `ServiceExport`) + `demo-client`.
+- **`cluster-a/`** (applied to the *other* cluster — separate ArgoCD or `kubectl apply`): `whoami` (exported) + `connectivity-checker` + `demo-client`.
+- Any pod reaches a remote service at **`<svc>.cross-cluster-demo.svc.clusterset.local`** (Lighthouse MCS DNS).
+
+## Cross-cluster (Submariner) — installed out-of-band
+
+Submariner itself (operator + broker + gateway) is **not** GitOps-managed here — it's installed with
+`subctl` because the broker-join uses a one-time token/secret. One cluster hosts the broker; both join.
+
+Hard requirements for the tunnel + no-NAT routing:
+- **Non-overlapping pod & service CIDRs** across the two clusters (else use Submariner Globalnet + NAT).
+- Each gateway node needs a **routable IP** (floating IP), the Neutron **port-security** relaxed or
+  `allowed-address-pairs` set for the remote CIDRs, and SG rules for **UDP 500 + 4500 + ESP**.
+
+```bash
+subctl deploy-broker --kubeconfig cluster-b.kubeconfig
+subctl join --kubeconfig cluster-b.kubeconfig broker-info.subm --clusterid cluster-b --cable-driver libreswan
+subctl join --kubeconfig cluster-a.kubeconfig broker-info.subm --clusterid cluster-a --cable-driver libreswan
+subctl export service <name> -n cross-cluster-demo   # make a service clusterset-reachable
+```
 
 ## Environment-specific values to set
 

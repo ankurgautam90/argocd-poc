@@ -1,0 +1,95 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  annotations:
+    rollout.argoproj.io/revision: '7'
+  name: demo-gw
+  namespace: default
+spec:
+  replicas: 4
+  restartAt: '2026-07-20T06:24:37Z'
+  selector:
+    matchLabels:
+      app: demo-gw
+  strategy:
+    canary:
+      canaryService: demo-canary
+      stableService: demo-stable
+      steps:
+      - setWeight: 20
+      - pause: {}
+      - setWeight: 50
+      - pause: {}
+      - setWeight: 100
+      trafficRouting:
+        plugins:
+          argoproj-labs/gatewayAPI:
+            httpRoute: demo-route
+            namespace: default
+  template:
+    metadata:
+      labels:
+        app: demo-gw
+    spec:
+      containers:
+      - image: argoproj/rollouts-demo:blue
+        name: demo
+        resources: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-stable
+  namespace: default
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: demo-gw
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-canary
+  namespace: default
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: demo-gw
+  type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: demo-route
+  namespace: default
+spec:
+  hostnames:
+  - canary.103.240.25.21.sslip.io
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: kong
+    namespace: kong
+  rules:
+  - backendRefs:
+    - group: ''
+      kind: Service
+      name: demo-stable
+      port: 80
+      weight: 100
+    - group: ''
+      kind: Service
+      name: demo-canary
+      port: 80
+      weight: 0
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
